@@ -144,6 +144,18 @@ environs:
   SCANNER_CONCURRENCY: "1"
   STRUCTURED_LOGGING: "false"
 
+# enable external secrets and read the database credentials from the external secret store
+externalSecrets:
+  enabled: false
+  # below configurations are used only when externalSecrets.enabled is true
+  # refreshInterval: 1h0m0s
+  # secretStoreRefName: secret-store
+  # secretStoreRefKind: SecretStore
+  # targetCreationPolicy: Owner
+  # secretName: secret-name
+  # admin_password_property: admin-password
+  # user_password_property: user-password
+
 postgres:
   # override the docker registry at container level
   registry:

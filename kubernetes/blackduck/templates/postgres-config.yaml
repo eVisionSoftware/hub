@@ -24,6 +24,38 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
   name: {{ .Release.Name }}-blackduck-db-config
   namespace: {{ .Release.Namespace }}
+{{- if .Values.externalSecrets.enabled }}
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  labels:
+    {{- include "bd.labels" . | nindent 4 }}
+    component: postgres
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+  name: {{ .Release.Name }}-external-secrets-blackduck-db-creds
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: {{ .Values.externalSecrets.refreshInterval }}
+  secretStoreRef:
+    name: {{ .Values.externalSecrets.secretStoreRefName }}
+    kind: {{ .Values.externalSecrets.secretStoreRefKind }}
+  target:
+    name: {{ .Release.Name }}-blackduck-db-creds
+    creationPolicy: {{ .Values.externalSecrets.targetCreationPolicy }}
+  data:
+  - secretKey: HUB_POSTGRES_ADMIN_PASSWORD_FILE
+    remoteRef:
+      key: {{ .Values.externalSecrets.secretName }}
+      property: {{ .Values.externalSecrets.admin_password_property }}
+  - secretKey: HUB_POSTGRES_USER_PASSWORD_FILE
+    remoteRef:
+        key: {{ .Values.externalSecrets.secretName }}
+        property: {{ .Values.externalSecrets.user_password_property }}
+{{- else }}
 ---
 apiVersion: v1
 data:
@@ -41,3 +73,4 @@ metadata:
   name: {{ .Release.Name }}-blackduck-db-creds
   namespace: {{ .Release.Namespace }}
 type: Opaque
+{{- end }}
