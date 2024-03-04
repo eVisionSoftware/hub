@@ -577,3 +577,7 @@ matchengine:
 
 metrics:
   enabled: false
+
+# additional manifests to include
+extras:
+  manifests: []
