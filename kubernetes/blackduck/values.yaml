@@ -149,6 +149,9 @@ environs:
   # Replace with SCAaaS's release name if using Artifactory Integration
   # BLACKDUCK_SCA_ENGINE_HOST: <scaaas-release-name>-scaaas-manager
 
+# Control the creation of ${release_name}-blackduck-db-creds secret
+createDBCredSecret: true
+
 postgres:
   # override the docker registry at container level
   registry:
@@ -624,3 +627,7 @@ integration:
 
 metrics:
   enabled: false
+
+# additional manifests to include
+extras:
+  manifests: []
