@@ -2,12 +2,21 @@ apiVersion: v1
 entries:
   blackduck:
   - apiVersion: v1
+    appVersion: 2023.7.3
+    created: "2024-07-17T11:48:01.961622+02:00"
+    description: Black Duck Helm Chart
+    digest: cb2439b161657ce657d29c20b8126d0446b9133268fea49105111939600073a7
+    name: blackduck
+    urls:
+    - blackduck-2023.7.3.tgz
+    version: 2023.7.3
+  - apiVersion: v1
     appVersion: 2023.4.0
-    created: "2024-03-04T14:58:42.15864+01:00"
+    created: "2024-07-17T11:48:01.958751+02:00"
     description: Black Duck Helm Chart
     digest: 4fefd233f7e8aeb34283ea7a2ccf95f2b867efac35f95c63bc96773849ab157a
     name: blackduck
     urls:
     - blackduck-2023.4.0.tgz
     version: 2023.4.0
-generated: "2024-03-04T14:58:42.156957+01:00"
+generated: "2024-07-17T11:48:01.956284+02:00"
