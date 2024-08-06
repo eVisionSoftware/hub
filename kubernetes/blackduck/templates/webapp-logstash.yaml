@@ -107,7 +107,7 @@ spec:
       containers:
       - env:
         - name: HUB_MAX_MEMORY
-          value: {{ .Values.webapp.hubMaxMemory }}
+          value: {{ include "computeHubMaxMemory" .Values.webapp }}
         {{- if .Values.webapp.hubMinMemory }}
         - name: HUB_MIN_MEMORY
           value: {{ .Values.webapp.hubMinMemory }}
@@ -123,10 +123,6 @@ spec:
           value: {{ .Values.datadog.enabled | quote }}
         - name: HUB_MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
           value: {{ .Values.metrics.enabled | quote }}
-        {{- if .Values.enableScmIntegration }}
-        - name: WEBAPP_SERVICE_OPTS
-          value: "-Dblackduck.scan.scm.enableIntegration=true"
-        {{- end }}
         envFrom:
         - configMapRef:
             name: {{ .Release.Name }}-blackduck-config
@@ -169,7 +165,7 @@ spec:
         {{- include "common.volume.mount" . | indent 8 }}
       - env:
         - name: HUB_MAX_MEMORY
-          value: {{ .Values.logstash.hubMaxMemory }}
+          value: {{ include "computeHubMaxMemory" .Values.logstash }}
         {{- if .Values.logstash.hubMinMemory }}
         - name: HUB_MIN_MEMORY
           value: {{ .Values.logstash.hubMinMemory }}

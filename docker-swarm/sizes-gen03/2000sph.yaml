@@ -84,6 +84,13 @@ services:
           memory: "7168M"
       replicas: 18
   postgres:
+    environment:
+      HUB_PG_SHARED_BUFFERS: '42974MB'
+      HUB_PG_EFFECTIVE_CACHE_SIZE: '51569MB'
+      HUB_PG_AUTOVACUUM_MAX_WORKERS: 8
+      HUB_PG_MAINTENANCE_WORK_MEM: '4096MB'
+      HUB_PG_MAX_CONNECTIONS: 800
+      HUB_PG_WORK_MEM: '58MB'
     deploy:
       resources:
         limits:
@@ -160,16 +167,6 @@ services:
           cpus: ".700"
           memory: "1024M"
       replicas: 1
-  uploadcache:
-    deploy:
-      resources:
-        limits:
-          cpus: ".800"
-          memory: "2048M"
-        reservations:
-          cpus: ".400"
-          memory: "1536M"
-      replicas: 1
   webapp:
     environment:
       HUB_MAX_MEMORY: "16588m"
@@ -191,15 +188,5 @@ services:
           memory: "3072M"
         reservations:
           cpus: ".400"
-          memory: "1024M"
-      replicas: 1
-  webui:
-    deploy:
-      resources:
-        limits:
-          cpus: "1.000"
-          memory: "2048M"
-        reservations:
-          cpus: ".300"
           memory: "1024M"
       replicas: 1

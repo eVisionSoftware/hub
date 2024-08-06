@@ -95,6 +95,21 @@ them unless this flag is added to the command above:
 --with-registry-auth
 ```
 
+## Running with ReversingLabs Enabled
+
+Note: This command might require being run as either a root user, a user in the docker group, or with 'sudo'.
+
+```
+docker stack deploy --compose-file docker-compose.yml -c docker-compose.rl.yml hub
+```
+
+There are some versions of docker where if the images live in a private repository, docker stack will not pull
+them unless this flag is added to the command above:
+
+```
+--with-registry-auth
+```
+
 ## Running with External PostgreSQL
 
 Hub can be run using a PostgreSQL instance other than the provided hub-postgres docker image.
@@ -231,6 +246,24 @@ Added definition:
         reservations: {cpus: '1', memory: 4096M}
 ```
 
+### Changing the Default ReversingLabs Memory Limits
+
+The default memory limits allow files up to 6GB to successfully scan. Additional memory and CPUs will potentially speed up scan times.
+
+The following configuration example will update the container memory limits from 6GB to 8GB. These configuration values can be changed 
+in the 'docker-compose.rl.yml':
+
+
+Added definition:
+
+```
+  rlservice:
+    deploy:
+      resources:
+        limits: {cpus: '2', memory: 8192M}
+        reservations: {cpus: '2', memory: 8192M}
+```
+
 ## Configuration
 
 There are several additional options that can be user-configured. This section describes these:
@@ -266,6 +299,7 @@ There are currently several containers that need access to services hosted by Bl
 * registration
 * scan
 * webapp
+* rl-service
 
 If a proxy is required for external internet access you'll need to configure it. 
 
@@ -291,6 +325,7 @@ There are several containers that will require the proxy password:
 * registration
 * scan
 * webapp
+* rl-service
 
 #### LDAP Trust Store Password
 
@@ -312,6 +347,7 @@ The proxy password secret will need to be added to the services:
 * registration
 * scan
 * webapp
+* rl-service
 
 In each of these service sections, you'll need to add:
 
@@ -524,6 +560,8 @@ For each of the services below, add the secret by
 * webapp
 * registration
 
+Note: The rl-service does not support proxies using certificates.
+
 ```
 secrets:
   - HUB_PROXY_CERT_FILE
@@ -531,44 +569,8 @@ secrets:
 
 # Source Upload Feature 
 
-Source side by side view feature is included in 2019.04 release. In order to enable the feature, there are two steps need to be done before the deployment.
+Source side by side view feature is included in 2019.04 release. In order to enable the feature you need to enable it in 'blackduck-config.env':
 
-**1. The flag in blackduck-config.env should be set to true.** 
 ```
 ENABLE_SOURCE_UPLOADS=true
-```
-**2. Seal Key creation.**
-
-When source files are uploaded, they are stored encrypted in the container (upload cache service). 
-
-Black Duck requires customers to provide their own seal key which is 32 bytes long in order to support the AES-256 encryption. And the seal key needs to be provided to the upload cache service. 
-
-Under the uploadcache service configuration in docker-compose.yml, provide the location where you keep the file.
-
-```
-uploadcache:
-    secrets:
-      - SEAL_KEY
-```
-And define the top level secrets at the bottom of the docker-compose.yml file as:
-```
-secrets:
-  SEAL_KEY:
-   external: true
-   name: "hub_SEAL_KEY"
-```
-
-**NOTE: If the seal key isn't provided, the source side by side view feature won't be available in Black Duck**
-
-
-### Key recovery support
-
-The upload cache service encrypts the file data with a root key. The root key is generated at the very first start of the application.
-The key can only be retrieved with the seal key, thus the encrypted data cannot be decrypted when the seal key isn't available.
-
-To protect the loss of file data, Black Duck supports the key recovery on demand. If customer wishes to retrieve the root key, they can do so by running the script as below.
-The script requires two arguments, local destination where you wish to store the root key (**please make sure to place it in a secure location**) and a path where you keep the seal key.
-
-```
-./bin/bd_get_source_upload_master_key.sh <local_destination_directory_path> <seal_key_file_path>
 ```

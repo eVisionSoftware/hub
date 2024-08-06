@@ -2,6 +2,12 @@ environs:
   SCANNER_CONCURRENCY: "1"
   BLACKDUCK_REDIS_MAXMEMORY: "36864mb"
   BLACKDUCK_DEPLOYMENT_BASE_SIZE: "sizes-gen03/2000sph.yaml"
+  HUB_PG_SHARED_BUFFERS: "42974MB"
+  HUB_PG_EFFECTIVE_CACHE_SIZE: "51569MB"
+  HUB_PG_AUTOVACUUM_MAX_WORKERS: 8
+  HUB_PG_MAINTENANCE_WORK_MEM: "4096MB"
+  HUB_PG_MAX_CONNECTIONS: 800
+  HUB_PG_WORK_MEM: "58MB"
 
 authentication:
   replicas: 1
@@ -151,24 +157,14 @@ scan:
 
 storage:
   replicas: 1
-  hubMaxMemory: "512m"
+  hubMaxMemory: "1024m"
   resources:
     limits:
       cpu: "1000m"
-      memory: "1024Mi"
-    requests:
-      cpu: "700m"
-      memory: "1024Mi"
-
-uploadcache:
-  replicas: 1
-  resources:
-    limits:
-      cpu: "800m"
       memory: "2048Mi"
     requests:
-      cpu: "400m"
-      memory: "1536Mi"
+      cpu: "700m"
+      memory: "2048Mi"
 
 webapp:
   replicas: 1
@@ -190,14 +186,4 @@ webserver:
       memory: "3072Mi"
     requests:
       cpu: "400m"
-      memory: "1024Mi"
-
-webui:
-  replicas: 1
-  resources:
-    limits:
-      cpu: "1000m"
-      memory: "2048Mi"
-    requests:
-      cpu: "300m"
       memory: "1024Mi"

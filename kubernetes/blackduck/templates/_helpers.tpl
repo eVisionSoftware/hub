@@ -35,7 +35,7 @@ AUTHENTICATION_HOST: {{ .Release.Name }}-blackduck-authentication:8443
 BLACKDUCK_CFSSL_HOST: {{ .Release.Name }}-blackduck-cfssl
 BLACKDUCK_REDIS_HOST: {{ .Release.Name }}-blackduck-redis
 BLACKDUCK_STORAGE_HOST: {{ .Release.Name }}-blackduck-storage
-BLACKDUCK_UPLOAD_CACHE_HOST: {{ .Release.Name }}-blackduck-uploadcache
+BLACKDUCK_STORAGE_PORT: "8443"
 BROKER_URL: amqps://{{ .Release.Name }}-blackduck-rabbitmq/protecodesc
 CFSSL: {{ .Release.Name }}-blackduck-cfssl:8888
 CLIENT_CERT_CN: {{ .Release.Name }}-blackduck-binaryscanner
@@ -45,15 +45,13 @@ HUB_DOC_HOST: {{ .Release.Name }}-blackduck-documentation
 HUB_JOBRUNNER_HOST: {{ .Release.Name }}-blackduck-jobrunner
 HUB_LOGSTASH_HOST: {{ .Release.Name }}-blackduck-logstash
 HUB_MATCHENGINE_HOST: {{ .Release.Name }}-blackduck-matchengine
+HUB_BOMENGINE_HOST: {{ .Release.Name }}-blackduck-bomengine
 HUB_PRODUCT_NAME: BLACK_DUCK
 HUB_REGISTRATION_HOST: {{ .Release.Name }}-blackduck-registration
 HUB_SCAN_HOST: {{ .Release.Name }}-blackduck-scan
-HUB_STORAGE_HOST: {{ .Release.Name }}-blackduck-storage
-HUB_UPLOAD_CACHE_HOST: {{ .Release.Name }}-blackduck-uploadcache
 HUB_VERSION: {{ .Values.imageTag }}
 HUB_WEBAPP_HOST: {{ .Release.Name }}-blackduck-webapp
 HUB_WEBSERVER_HOST: {{ .Release.Name }}-blackduck-webserver
-HUB_WEBUI_HOST: {{ .Release.Name }}-blackduck-ui
 RABBIT_MQ_HOST: {{ .Release.Name }}-blackduck-rabbitmq
 {{- if eq .Values.isKubernetes true }}
 BLACKDUCK_ORCHESTRATION_TYPE: KUBERNETES
@@ -147,10 +145,15 @@ ENABLE_SOURCE_UPLOADS: "false"
 Enable Binary Scanner
 */}}
 {{- define "enableBinaryScanner" -}}
-{{- if .Values.enableBinaryScanner -}}
-USE_BINARY_UPLOADS: "1"
-{{- else -}}
-USE_BINARY_UPLOADS: "0"
+{{- end -}}
+
+{{/*
+Enable integration
+*/}}
+{{- define "enableIntegration" -}}
+{{- if .Values.enableIntegration -}}
+ENABLE_INTEGRATION_SERVICE: "true"
+BLACKDUCK_INTEGRATION_HOST: {{ .Release.Name }}-blackduck-integration
 {{- end -}}
 {{- end -}}
 
@@ -264,7 +267,7 @@ Common Volumes
 {{- if .imagePullPolicy }}
 imagePullPolicy: {{ .imagePullPolicy }}
 {{- else -}}
-imagePullPolicy: Always
+imagePullPolicy: IfNotPresent
 {{- end -}}
 {{- end -}}
 
@@ -300,5 +303,26 @@ imagePullPolicy: Always
         items:
         - key: crypto-backup-seed
           path: backup/seed
+{{- end -}}
+{{- end -}}
+
+{{/*
+# Derive a value for HUB_MAX_MEMORY from .resources.limits.memory.
+# The scope is expected to be one of the services; e.g., .Values.jobrunner.
+*/}}
+{{- define "computeHubMaxMemory" }}
+{{- if (ne (dig "resources" "limits" "memory" "none" .) "none") }}
+{{- $rawMemLimit := .resources.limits.memory | replace "i" "" -}}
+{{- $memoryUnit := regexFind "[gmGM]" $rawMemLimit | upper -}}
+{{- $numericMemLimit := trimSuffix $memoryUnit $rawMemLimit -}}
+{{- $memLimitInMB := (mul $numericMemLimit (ternary 1024 1 (eq $memoryUnit "G"))) -}}
+{{- $rawRamPercentage := coalesce .maxRamPercentage $.maxRamPercentage 90 -}}
+{{- $maxRamPercentage := divf $rawRamPercentage 100.0 -}}
+{{- if (lt (mulf $memLimitInMB $maxRamPercentage) 256.0) }}
+{{- $maxRamPercentage := divf (subf $memLimitInMB 256.0) $memLimitInMB -}}
+{{- end }}
+{{- cat (round (mulf $memLimitInMB $maxRamPercentage) 0) "m" | nospace -}}
+{{- else }}
+{{- .hubMaxMemory }}
 {{- end -}}
 {{- end -}}

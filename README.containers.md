@@ -8,15 +8,17 @@ There are a number of containers that make up the application. Here are quick de
 3. [Binary Analysis Worker Container (bdba-worker)](#-binary-analysis-worker-container-bdba-worker)
 4. [CA Container (blackduck-cfssl)](#-ca--container-blackduck-cfssl)
 5. [Documentation Container (blackduck-documentation)](#-documentation-container-blackduck-documentation)
-6. [Job Runner Container (blackduck-jobrunner)](#-job-runner-container-blackduck-jobrunner)
+6. [Integration Container (blackduck-integration)](#-integration-container-artifactory-integration)
+7. [Job Runner Container (blackduck-jobrunner)](#-job-runner-container-blackduck-jobrunner)
 7. [LogStash Container (blackduck-logstash)](#-logstash--container-blackduck-logstash)
-8. [MATCHENGINE Container (blackduck-matchengine)](#-matchengine-container-blackduck-matchengine)
+8. [Match Engine Container (blackduck-matchengine)](#-matchengine-container-blackduck-matchengine)
 9. [RabbitMQ Container (rabbitmq)](#-rabbitmq-container-rabbitmq)
 10. [Registration Container (blackduck-registration)](#-registration-container-blackduck-registration)
 11. [Scan Container (blackduck-scan)](#-scan-container-blackduck-scan)
-12. [Upload Cache Container (blackduck-upload-cache)](#-upload-cache-container-blackduck-upload-cache)
+12. [Storage Container (blackduck-storage)](#-storage-container-blackduck-storage)
 13. [Web App Container (blackduck-webapp)](#-web-app-container-blackduck-webapp)
 14. [Web Server Container (blackduck-nginx)](#-web-server-container-blackduck-nginx)
+15. [RL Service Container (rl-service)](#-rl-service-container-rl-service)
 
 # Web App Container (blackduck-webapp)
 ----
@@ -127,7 +129,7 @@ The container will need to expose 8443 to other containers that will links to it
 This container runs as UID 100. If the container is started as UID 0 (root) then the user will be switched to UID 100:root before executing its main process.
 This container is also able to be started as a random UID as long as it is also started within the root group (GID/fsGroup 0).
 
-# MATCHENGINE Container (blackduck-matchengine)
+# Match Engine Container (blackduck-matchengine)
 ----
 
 ## Container Description
@@ -204,11 +206,15 @@ This container is also able to be started as a random UID as long as it is also 
 
 ## Container Description
 
-The object storage service stores tools (files) for use by Detect.
+The object storage service stores tools (files) for use by Detect,
+generated reports, uploaded SBOMs, BDIO files, and other bulk data.
+If the Black Duck Binary Analysis feature is enabled uploaded binary
+files are stored here temporarily. If the source view feature is
+enabled source files are stored here.
 
 ## Scalability
 
-This container can be scaled, but if using a File storage provider all instance must share the same persistent volume.
+This container can be scaled, but if using a File storage provider all replicas must share the same persistent volume.
 
 ## Links/Ports
 
@@ -217,6 +223,7 @@ This container will need to connect to these other containers/services:
 * registration
 * logstash
 * cfssl
+* rabbitmq
 
 This container will need to expose port 8443 to other containers that will link to it.
 
@@ -228,6 +235,12 @@ Compose or Docker Swarm use. These environment variables can be set to override 
 * registration - $HUB_REGISTRATION_HOST
 * logstash - $HUB_LOGSTASH_HOST
 * cfssl - $HUB_CFSSL_HOST
+* rabbitmq - $RABBIT_MQ_HOST
+
+## Other configurable environment variables
+
+* Default disk size for source files: 4GB ($MAX_TOTAL_SOURCE_SIZE_MB)
+* Default Data Retention Days: 180 ($DATA_RETENTION_IN_DAYS)
 
 ## Users/Groups
 
@@ -448,7 +461,7 @@ This container will need to connect to these other containers/services:
 * documentation
 * scan
 * authentication
-* upload cache
+* storage
 
 This container should expose port 443 outside of the docker network.
 
@@ -464,7 +477,7 @@ There are times when running in other types of orchestrations that any individua
 * matchengine - $HUB_MATCHENGINE_HOST
 * cfssl - $HUB_CFSSL_HOST
 * documentation - $HUB_DOC_HOST
-* upload cache - $HUB_UPLOAD_CACHE_HOST
+* storage - $BLACKDUCK_STORAGE_HOST
 
 ## Users/Groups
 
@@ -572,54 +585,6 @@ This container runs as UID 100. If the container is started as UID 0 (root) then
 This container is also able to be started as a random UID as long as it is also started within the root group (GID/fsGroup 0).
 
 
-# Upload Cache Container (blackduck-upload-cache)
-----
-
-## Container Description
-
-This container mainly stores customer's files that are consumed by the other services. Currently, the main purpose of the service is to store the source files
-for the source
-view feature (starting 2019.04 release) and temporarily storing the binary files for the binary analysis (if Black Duck Binary Analysis feature is enabled.)
-
-## Scalability
-
-There should only be a single instance of this container. It currently cannot be scaled.
-
-## Links/Ports
-
-This container will need to connect to these other containers/services:
-
-* cfssl
-* logstash
-
-And if Black Duck Binary Analysis is enabled:
-
-* rabbitmq
-
-The container will need to expose ports 9443 and 9444 to other containers that will link to it.
-
-## Alternate Host Name Environment Variables
-
-There are times when running in other types of orchestrations that any individual service name may be different. For example, You may have an external logstash
-endpoint which is resolved through a different service name.
-
-To support any such use case, these environment variables can be set to override the default service names:
-
-* cfssl - $HUB_CFSSL_HOST
-* logstash - $HUB_LOGSTASH_HOST
-* rabbitmq - $RABBIT_MQ_HOST
-
-## Other configurable environment variables
-
-* Default disk size for source files: 4GB ($MAX_TOTAL_SOURCE_SIZE_MB)
-* Default Data Retention Days: 180 ($DATA_RETENTION_IN_DAYS)
-
-## Users/Groups
-
-This container runs as UID 100. If the container is started as UID 0 (root) then the user will be switched to UID 100:root before executing its main process.
-This container is also able to be started as a random UID as long as it is also started within the root group (GID/fsGroup 0).
-
-
 # Binary Analysis Worker Container (bdba-worker)
 ----
 
@@ -658,3 +623,68 @@ To support any such use case, these environment variables can be set to override
 ## Users/Groups
 
 This container runs as UID 0.
+
+# Integration Container
+----
+
+## Container Description
+
+This container is only deployed in Kubernetes environments. This container is required for the Artifactory Integration feature and is unused otherwise.
+
+## Scalability
+
+There should only be a single instance of this container. It currently cannot be scaled.
+
+## Links/Ports
+
+This container will need to connect to these other containers/services:
+
+* logstash
+* cfssl
+* scan
+* bomengine
+* rabbitmq
+
+This container will need to expose port 8443 to other containers that will link to it.
+
+## Users/Groups
+
+This container runs as UID 100. If the container is started as UID 0 (root) then the user will be switched to UID 100:root before executing its main process.
+This container is also able to be started as a random UID as long as it is also started within the root group (GID/fsGroup 0).
+
+# RL Service Container (rl-service)
+----
+
+## Container Description
+
+This container analyzes binary files for malware.
+This container is only used if Black Duck - ReversingLabs is enabled.
+
+## Scalability
+
+This container can be scaled.
+
+## Links/Ports
+
+This container needs to connect to these containers/services:
+* cfssl
+* logstash
+* rabbitmq
+* storage
+* scan
+* registration
+
+## Alternate Host Name Environment Variables
+
+It may be useful to set host names for these containers, that are not the Docker Swarm defaults, when running in other types of orchestrations. These environment variables can be set to override the default host names:
+
+* cfssl: $HUB_CFSSL_HOST
+* logstash: $HUB_LOGSTASH_HOST
+* rabbitmq: $RABBIT_MQ_HOST
+* storage: $BLACKDUCK_STORAGE_HOST
+* scan: $HUB_SCAN_HOST
+* registration: $HUB_REGISTRATION_HOST
+
+## Users/Groups
+
+This container runs as UID 1000 (rlservice username)

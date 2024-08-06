@@ -2,9 +2,9 @@
 
 This repository contains orchestration files and documentation for deploying Black Duck Docker containers.
 
-## Location of Black Duck 2023.4.0 archive:
+## Location of Black Duck 2024.7.0 archive:
 
-https://github.com/blackducksoftware/hub/archive/v2023.4.0.tar.gz
+https://github.com/blackducksoftware/hub/archive/v2024.7.0.tar.gz
 
 NOTE:
 
@@ -28,6 +28,7 @@ https://github.com/blackducksoftware/hub/releases
 * https://hub.docker.com/r/blackducksoftware/blackduck-bomengine/
 * https://hub.docker.com/r/blackducksoftware/blackduck-cfssl/
 * https://hub.docker.com/r/blackducksoftware/blackduck-documentation/
+* https://hub.docker.com/r/blackducksoftware/blackduck-integration
 * https://hub.docker.com/r/blackducksoftware/blackduck-jobrunner/
 * https://hub.docker.com/r/blackducksoftware/blackduck-logstash/
 * https://hub.docker.com/r/blackducksoftware/blackduck-nginx/
@@ -38,12 +39,11 @@ https://github.com/blackducksoftware/hub/releases
 * https://hub.docker.com/r/blackducksoftware/blackduck-scan/
 * https://hub.docker.com/r/blackducksoftware/blackduck-storage/
 * https://hub.docker.com/r/blackducksoftware/blackduck-webapp/
-* https://hub.docker.com/r/blackducksoftware/blackduck-upload-cache/
 * https://hub.docker.com/r/blackducksoftware/blackduck-redis/
 * https://hub.docker.com/r/blackducksoftware/blackduck-matchengine/
 * https://hub.docker.com/r/sigsynopsys/bdba-worker/
 * https://hub.docker.com/r/blackducksoftware/rabbitmq/
-* https://hub.docker.com/r/blackducksoftware/blackduck-webui/
+* https://hub.docker.com/r/blackducksoftware/rl-service/
 
 # Running Black Duck in Docker
 

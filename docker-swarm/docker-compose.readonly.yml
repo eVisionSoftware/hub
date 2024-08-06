@@ -23,6 +23,7 @@ services:
   webapp:
     read_only: true
     volumes:
+      - /opt/blackduck/hub/downloads/logzips
       - /opt/blackduck/hub/tomcat
       - /opt/blackduck/hub/hub-webapp/logs
       - /opt/blackduck/hub/hub-webapp/conf
@@ -75,11 +76,6 @@ services:
       - /var/run
       - /opt/blackduck/hub/webserver/filebeat
       - /opt/blackduck/hub/webserver/logrotate
-  webui:
-      read_only: true
-      volumes:
-        - /opt/blackduck/hub/hub-ui/logs
-        - /opt/blackduck/hub/filebeat
   documentation:
     read_only: true
     volumes:
@@ -88,11 +84,6 @@ services:
       - /opt/blackduck/hub/filebeat
       - /opt/blackduck/hub/tomcat
       - /tmp
-  uploadcache:
-    read_only: true
-    volumes:
-      - /opt/blackduck/hub/filebeat
-      - /opt/blackduck/hub/blackduck-upload-cache/logs
   redis:
     read_only: true
     volumes:
