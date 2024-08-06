@@ -144,6 +144,10 @@ environs:
   # BLACKDUCK_SCASS_HOST: ""
   # BLACKDUCK_SCASS_SCHEME: "https"
   # BLACKDUCK_SCASS_PORT: 443
+
+# Control the creation of ${release_name}-blackduck-db-creds secret
+createDBCredSecret: true
+
 postgres:
   # override the docker registry at container level
   registry:
@@ -612,3 +616,7 @@ integration:
 
 metrics:
   enabled: false
+
+# additional manifests to include
+extras:
+  manifests: []
