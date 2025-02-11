@@ -151,6 +151,9 @@ environs:
   SCANNER_CONCURRENCY: "1"
   STRUCTURED_LOGGING: "false"
 
+# Control the creation of ${release_name}-blackduck-db-creds secret
+createDBCredSecret: true
+
 postgres:
   # override the docker registry at container level
   registry:
@@ -619,3 +622,7 @@ integration:
 
 metrics:
   enabled: false
+
+# additional manifests to include
+extras:
+  manifests: []
