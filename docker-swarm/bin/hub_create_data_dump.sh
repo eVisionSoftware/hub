@@ -5,8 +5,8 @@
 #  2. The database container has been properly initialized.
 
 HUB_DATABASE_IMAGE_NAME=${HUB_DATABASE_IMAGE_NAME:-postgres}
-HUB_POSTGRES_VERSION=${HUB_POSTGRES_VERSION:-14-1.25}
-HUB_VERSION=${HUB_VERSION:-2024.7.3}
+HUB_POSTGRES_VERSION=${HUB_POSTGRES_VERSION:-15-1.11}
+HUB_VERSION=${HUB_VERSION:-2025.1.1}
 OPT_FORCE=
 OPT_LIVE_SYSTEM=
 OPT_MAX_CPU=${MAX_CPU:-1}
@@ -96,7 +96,7 @@ function process_args() {
                     fail 12 "Unexpected argument '$1'"
                 fi ;;
         esac
-        shift       
+        shift
     done
 
     # Validate arguments
@@ -147,7 +147,7 @@ function create_globals() {
     local host_path=$2
 
     echo "Attempting to create globals SQL file [Container: ${container} | Host path: ${host_path}]."
-    
+
     docker exec "${container}" pg_dumpall -U blackduck -g > "${host_path}/globals.sql" || \
         fail 10 "Unable to create globals SQL file [Container: ${container} | Host path: ${host_path}]"
 
@@ -160,7 +160,7 @@ function create_dump() {
     local database=$3
 
     echo "Attempting to create database dump [Container: ${container} | Host path: ${host_path} | Database: ${database}]."
-    
+
     if [ "${OPT_MAX_CPU}" -gt 1 ]; then
         docker exec "${container}" pg_dump -U blackduck -Fd "-j${OPT_MAX_CPU}" "${database}" -f "/tmp/${database}.dump" || \
             fail 8 "Unable to create database dump [Container: ${container} | Host path: ${host_path} | Database: ${database}]"

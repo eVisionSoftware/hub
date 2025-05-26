@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2018 Black Duck Software Inc.
-# http://www.blackducksoftware.com/
+# Copyright (C) 2018 Black Duck Software, Inc.
+# http://www.blackduck.com/
 # All rights reserved.
 #
 # This software is the confidential and proprietary information of
-# Black Duck Software ("Confidential Information"). You shall not
+# Black Duck ("Confidential Information"). You shall not
 # disclose such Confidential Information and shall use it only in
 # accordance with the terms of the license agreement you entered into
-# with Black Duck Software.
+# with Black Duck.
 
 # Gather system and orchestration data to aide in problem diagnosis.
 # This command should be run by "root" on the docker host, although
@@ -41,7 +41,7 @@ set -o noglob
 
 readonly NOW="$(date +"%Y%m%dT%H%M%S%z")"
 readonly NOW_ZULU="$(date -u +"%Y%m%dT%H%M%SZ")"
-readonly HUB_VERSION="${HUB_VERSION:-2024.7.3}"
+readonly HUB_VERSION="${HUB_VERSION:-2025.1.1}"
 readonly OUTPUT_FILE="${SYSTEM_CHECK_OUTPUT_FILE:-system_check_${NOW}.txt}"
 readonly PROPERTIES_FILE="${SYSTEM_CHECK_PROPERTIES_FILE:-${OUTPUT_FILE%.txt}.properties}"
 readonly SUMMARY_FILE="${SYSTEM_CHECK_SUMMARY_FILE:-${OUTPUT_FILE%.txt}_summary.properties}"
@@ -62,9 +62,33 @@ readonly REQ_RAM_GB_PER_BDBA=2          # The first container counts double.
 readonly REQ_RAM_GB_REDIS_SENTINEL=3    # Additional memory required for redis sentinal mode
 
 # Required container minimum memory limits, in MB.
-# The _G3 and _G4 arrays are for scans-per-hour sizing
+# The _G3, _G4, and _G5 arrays are for scans-per-hour sizing
 # The _G2 arrays are for enhanced scanning
 # The _G1 arrays are for legacy scanning
+declare -ar REQ_CONTAINER_SIZES_G5=(
+    # "SERVICE=10sph 120sph 250sph 500sph 1000sph 1500sph 2000sph"
+    "hub_alert=2560 2560 2560 2560 2560 2560 2560"
+    "hub_alert_database=2560 2560 2560 2560 2560 2560 2560"
+    "hub_authentication=1024 1024 1024 1024 1024 1024 1024"
+    "hub_binaryscanner=4096 4096 4096 4096 4096 4096 4096"
+    "hub_bomengine=1024 1024 1024 1024 1024 1024 1024"
+    "hub_cfssl=260 260 260 260 1024 1024 1024"
+    "hub_documentation=768 768 768 768 768 768 768"
+    "hub_jobrunner=1280 1280 1280 1280 1280 1280 1280"
+    "hub_logstash=1536 1536 1536 1536 1536 1536 1536"
+    "hub_matchengine=1280 1280 1280 1280 1280 1280 1280"
+    "hub_postgres=8192 16384 24576 65536 90112 106496 131072"
+    "hub_postgres-upgrader=4096 4096 4096 4096 4096 4096 4096"
+    "hub_rabbitmq=307 307 307 512 1433 1433 1433"
+    "hub_redis=512 512 512 4096 5120 5120 5120"
+    "hub_redisslave=512 512 512 4096 5120 5120 5120"
+    "hub_redissentienl=32 32 32 32 32 32 32"
+    "hub_registration=1024 1024 1024 1024 1024 1024 1024"
+    "hub_scan=1024 1024 1024 1024 1024 1024 1024"
+    "hub_storage=2048 2560 3072 3072 4096 4096 3072"
+    "hub_webapp=3584 3072 5120 5600 10240 13312 15360"
+    "hub_webserver=512 512 512 512 1024 1024 1024"
+)
 declare -ar REQ_CONTAINER_SIZES_G4=(
     # "SERVICE=10sph 120sph 250sph 500sph 1000sph 1500sph 2000sph"
     "hub_alert=2560 2560 2560 2560 2560 2560 2560"
@@ -223,6 +247,13 @@ declare -ar TS_MEM_SIZES_G1=(
     "hub_webserver=512 2048 2048"
 )
 
+declare -ar SPH_REPLICA_COUNTS_G5=(
+    # "SERVICE=10sph 120sph 250sph 500sph 1000sph 1500sph 2000sph"
+    "hub_bomengine=1 1 1 2 5 6 7"
+    "hub_jobrunner=1 1 1 2 4 5 6"
+    "hub_matchengine=1 1 2 3 6 8 10"
+    "hub_scan=1 1 1 3 8 10 12"
+)
 declare -ar SPH_REPLICA_COUNTS_G4=(
     # "SERVICE=10sph 120sph 250sph 500sph 1000sph 1500sph 2000sph"
     "hub_bomengine=1 1 1 2 7 8 10"
@@ -251,6 +282,11 @@ declare -ar TS_REPLICA_COUNTS_G1=(
     "hub_scan=1 2 3"
 )
 
+declare -ar SPH_PG_SETTINGS_G5=(
+    # "SERVICE=10sph 120sph 250sph 500sph 1000sph 1500sph 2000sph"
+    "shared_buffers=2653 5336 8016 21439 29502 34878 42974"
+    "effective_cache_size=3185 6404 9619 25727 35403 41854 51569"
+)
 declare -ar SPH_PG_SETTINGS_G4=(
     # "SERVICE=10sph 120sph 250sph 500sph 1000sph 1500sph 2000sph"
     "shared_buffers=2653 5336 8016 21439 29502 34878 42974"
@@ -290,7 +326,7 @@ readonly WARN="WARNING"
 readonly FAIL="FAIL"
 readonly NOTE="NOTE"
 
-# See https://sig-confluence.internal.synopsys.com/display/SIGBD/Architecture+Overview
+# See https://blackduck.atlassian.net/wiki/spaces/SIGBD/pages/13107681/Architecture+Overview
 declare -ar REPLICABLE=(
     # "SERVICE=status"
     "hub_alert=$WARN"
@@ -326,7 +362,7 @@ readonly DOCKER_LEGACY_EDITION="legacy"
 readonly SCHEMA_NAME=${HUB_POSTGRES_SCHEMA:-st}
 
 # Controls installation sizing estimation.
-SCAN_SIZING="gen04"
+SCAN_SIZING="gen05"
 
 # Controls a switch to turn network testing on/off for systems with no internet connectivity
 USE_NETWORK_TESTS="$TRUE"
@@ -435,6 +471,14 @@ setup_sizing() {
             MEM_SIZE_SCALE=("${SPH_MEM_SIZES_G4[@]}")
             REPLICA_COUNT_SCALE=("${SPH_REPLICA_COUNTS_G4[@]}")
             PG_SETTINGS_SCALE=("${SPH_PG_SETTINGS_G4[@]}")
+            ;;
+        gen05)
+            SIZING="scans-per-hour"
+            SIZE_SCALE=("${SPH_SIZE_SCALE[@]}")
+            REQ_CONTAINER_SIZES=("${REQ_CONTAINER_SIZES_G5[@]}")
+            MEM_SIZE_SCALE=()
+            REPLICA_COUNT_SCALE=("${SPH_REPLICA_COUNTS_G5[@]}")
+            PG_SETTINGS_SCALE=("${SPH_PG_SETTINGS_G5[@]}")
             ;;
         *)
             error_exit "** Internal error: unexpected SCAN_SIZING '$SCAN_SIZING'"
@@ -1570,6 +1614,7 @@ END
 ################################################################
 # shellcheck disable=SC2155,SC2046
 # shellcheck disable=SC2030,SC2031 # False positives; see https://github.com/koalaman/shellcheck/issues/1409
+# shellcheck disable=SC2319 # allow 'echo "$?"'
 echo_port_status() {
     # shellcheck disable=SC2128 # $FUNCNAME[0] does not work in Alpine ash
     [[ "$#" -eq 1 ]] || error_exit "usage: $FUNCNAME <port>"
@@ -1713,6 +1758,56 @@ TCP_KEEPALIVE_TIMEOUTS: Linux has two related timeouts.  The
 EOF
         fi
         readonly TCP_KEEPALIVE_TIMEOUT_DESC
+    fi
+}
+
+################################################################
+# Check redis system configuration settings
+#
+# Globals:
+#   SYSCTL_OVERCOMMIT_STATUS -- (out) PASS/FAIL vm.overcommit status message
+#   KERNEL_TRANSPARENT_HUGEPAGES -- (out) PASS/FAIL status message
+# Arguments:
+#   None
+# Returns:
+#   None
+################################################################
+# shellcheck disable=SC2046,SC2155
+check_redis_settings() {
+    if [[ -z "${SYSCTL_OVERCOMMIT_STATUS}" ]] ; then
+        if ! is_linux ; then
+            readonly SYSCTL_OVERCOMMIT_STATUS="$UNKNOWN -- non-linux system"
+            return
+        fi
+
+        if ! have_command sysctl ; then
+            readonly SYSCTL_OVERCOMMIT_STATUS="$UNKNOWN -- sysctl not found"
+        elif is_macos ; then
+            readonly SYSCTL_OVERCOMMIT_STATUS="$PASS -- not applicable to macOS"
+        else
+            echo "Checking sysctl vm.overcommit_memory setting..."
+            local overcommit=$(sysctl vm.overcommit_memory | awk -F' = ' '{print $2}')
+            if [[ "$overcommit" -ne 1 ]]; then
+                readonly SYSCTL_OVERCOMMIT_STATUS="$FAIL: vm.overcommit_memory = ${overcommit}. Redis may fail under low memory conditions. See https://redis.io/docs/latest/develop/get-started/faq/#background-saving-fails-with-a-fork-error-on-linux"
+            else
+                readonly SYSCTL_OVERCOMMIT_STATUS="$PASS: vm.overcommit_memory = ${overcommit}"
+            fi
+        fi
+
+        if [[ -r /sys/kernel/mm/transparent_hugepage/enabled ]] ; then
+            echo "Checking transparent hugepage setting..."
+            local kth=$(cat /sys/kernel/mm/transparent_hugepage/enabled)
+            if [[ "$kth" =~ \[always\] ]] || [[ "$kth" == 'always' ]] ; then
+                KERNEL_TRANSPARENT_HUGEPAGES="$FAIL: '$kth'. See the 'Kernel Memory' section of the redis tuning guide."
+            else
+                KERNEL_TRANSPARENT_HUGEPAGES="$PASS: '$kth'"
+            fi
+        else
+            KERNEL_TRANSPARENT_HUGEPAGES="$UNKNOWN -- /sys/kernel/mm/transparent_hugepage/enabled not found"
+        fi
+
+        # https://redis.io/learn/operate/redis-at-scale/talking-to-redis/initial-tuning has many
+        # more setting suggestions that we are not checking...
     fi
 }
 
@@ -2334,7 +2429,7 @@ get_installation_size() {
 
         # -- Size based on container memory limit --
         local container_mem_steps=
-        if [[ "$SCAN_SIZING" == "gen03" ]] || [[ "$SCAN_SIZING" == "gen04" ]]; then
+        if [[ "$SCAN_SIZING" != "gen01" ]] && [[ "$SCAN_SIZING" != "gen02" ]]; then
             # shellcheck disable=SC2155 # We don't care about the array_get exit code
             container_mem_steps="$(array_get "${REQ_CONTAINER_SIZES[@]}" "$hub_service")"
             _adjust_size_bracket "$container_memory" "$service container size limit of $container_memory MB" "$container_mem_steps"
@@ -2342,7 +2437,7 @@ get_installation_size() {
 
         # -- Size based on app memory allocation --
         local -i memory
-        if [[ "$SCAN_SIZING" == "gen03" ]] || [[ "$SCAN_SIZING" == "gen04" ]]; then
+        if [[ "$SCAN_SIZING" != "gen01" ]] && [[ "$SCAN_SIZING" != "gen02" ]]; then
             memory=$app_memory;
         else
             memory=$((app_memory > 0 ? app_memory : container_memory));
@@ -2543,16 +2638,16 @@ _get_container_size_info() {
                     service="hub_authentication";;
                 (blackducksoftware/blackduck-bomengine*)
                     service="hub_bomengine";;
-                (sigsynopsys/bdba-worker*)
+                (blackducksoftware/bdba-worker*)
                     service="hub_binaryscanner";;
                 (blackducksoftware/blackduck-cfssl*)
                     service="hub_cfssl"; memvar="container_memory";;
                 (blackducksoftware/blackduck-documentation*)
                     service="hub_documentation";;
                 (blackducksoftware/blackduck-integration*)
-                    service="hub_integration";; 
+                    service="hub_integration";;
                 (blackducksoftware/blackduck-jobrunner*)
-                    service="hub_jobrunner";;                                                                                                                                                                   
+                    service="hub_jobrunner";;
                 (blackducksoftware/blackduck-logstash*)
                     service="hub_logstash";;
                 (blackducksoftware/blackduck-postgres-exporter*)
@@ -2652,7 +2747,7 @@ check_container_memory() {
 
         echo "Checking container/service memory limits..."
         local -a results
-        local -i index=$(if [[ "$SCAN_SIZING" == "gen03" ]] || [[ "$SCAN_SIZING" == "gen04" ]] || ! is_swarm_enabled; then echo 0; else echo 1; fi)
+        local -i index=$(if [[ "$SCAN_SIZING" != "gen01" ]] && [[ "$SCAN_SIZING" != "gen02" ]] || ! is_swarm_enabled; then echo 0; else echo 1; fi)
         while read -r service image memvar app_memory memory replicas ; do
             local hub_service="${service/#blackduck_/hub_}"
             if [[ "$hub_service" == unknown-blackduck ]]; then
@@ -2680,7 +2775,7 @@ check_container_memory() {
         # shellcheck disable=SC2155 # We don't care about the subcommand exit code
         local result=$(docker container ls -a --format '{{.ID}} {{.Image}} {{.Names}}' | while read -r id image names ; do
             if [[ "$(docker container inspect "$id" --format '{{.State.OOMKilled}}')" != "false" ]] && \
-               [[ "$image" =~ blackducksoftware* || "$image" =~ sigsynopsys* ]]; then
+               [[ "$image" =~ blackducksoftware* ]]; then
                 echo "$FAIL: container $id ($names) was killed because it ran out of memory"
             fi
         done)
@@ -2696,7 +2791,7 @@ check_container_memory() {
 # Globals:
 #   RUNNING_HUB_VERSION -- (out) running Black Duck version.
 #   RUNNING_BDBA_VERSION -- (out) running BDBA version.
-#   RUNNING_ALERT_VERSION -- (out) running Synopsys Alert version.
+#   RUNNING_ALERT_VERSION -- (out) running Black Duck Alert version.
 #   RUNNING_OTHER_VERSIONS -- (out) other Black Duck product versions.
 #   RUNNING_VERSION_STATUS -- (out) pass/fail version check message.
 # Arguments:
@@ -2731,7 +2826,7 @@ get_running_hub_version() {
                 status+="$FAIL: multiple Black Duck versions are running."
             fi
         fi
-        local -r all="$(echo "$raw" | grep -aE '^sigsynopsys/|^blackducksoftware/' | grep -avF ':1.' | sort | uniq)"
+        local -r all="$(echo "$raw" | grep -aE '^blackducksoftware/' | grep -avF ':1.' | sort | uniq)"
 
         local -r hub_versions="$(echo "$all" | grep -aE "$VERSIONED_HUB_IMAGES" | cut -d: -f2 | sort | uniq | tr '\n' ' ' | sed -e 's/ *$//')"
         local -r bdba_versions="$(echo "$all" | grep -aE "$VERSIONED_BDBA_IMAGES" | cut -d: -f2 | sort | uniq | tr '\n' ' ' | sed -e 's/ *$//')"
@@ -2771,7 +2866,7 @@ get_docker_processes() {
 
         echo "Checking current docker processes..."
         local -r all="$(docker ps | sed -e 's/\xE2\x80\xA6/+/')"
-        local -r others="$(docker ps --format '{{.Image}}' | grep -aFv blackducksoftware | grep -aFv sigsynopsys)"
+        local -r others="$(docker ps --format '{{.Image}}' | grep -aFv blackducksoftware )"
         readonly DOCKER_PROCESSES_UNFORMATTED="$(docker ps --format '{{.ID}} {{.Image}} {{.Names}} {{.Status}}')"
         if [[ -n "$others" ]]; then
             # shellcheck disable=SC2116,SC2086 # Deliberate extra echo to collapse lines
@@ -2803,7 +2898,7 @@ is_binary_scanner_container_running() {
            readonly IS_BINARY_SCANNER_CONTAINER_RUNNING="$FALSE"
        else
            [[ -n "${DOCKER_PROCESSES_UNFORMATTED}" ]] || get_docker_processes
-           readonly BINARY_SCANNER_CONTAINER_COUNT="$(echo "$DOCKER_PROCESSES_UNFORMATTED" | grep -aF sigsynopsys | grep -acF binaryscanner)"
+           readonly BINARY_SCANNER_CONTAINER_COUNT="$(echo "$DOCKER_PROCESSES_UNFORMATTED" | grep -aF blackducksoftware | grep -acF binaryscanner)"
            readonly IS_BINARY_SCANNER_CONTAINER_RUNNING="$(echo_boolean "$([[ "$BINARY_SCANNER_CONTAINER_COUNT" -gt 0 ]]; echo "$?")")"
        fi
     fi
@@ -2907,7 +3002,7 @@ get_container_health() {
 
         [[ -n "${DOCKER_PROCESSES_UNFORMATTED}" ]] || get_docker_processes
         local -r result=$(echo "$DOCKER_PROCESSES_UNFORMATTED" | while read -r id image names status ; do
-                if [[ "$image" =~ blackducksoftware* || "$image" =~ sigsynopsys* ]] && [[ "$status" =~ \(unhealthy\)* ]]; then
+                if [[ "$image" =~ blackducksoftware* ]] && [[ "$status" =~ \(unhealthy\)* ]]; then
                     echo "$FAIL: container $id ($names) is unhealthy."
                 fi
         done)
@@ -3539,7 +3634,7 @@ get_container_web_report() {
 
         echo "Checking web access from running Black Duck docker containers to ${url} ... "
         # shellcheck disable=SC2155 # We don't care about the subcommand exit code
-        local container_ids="$(docker container ls | grep -aE "blackducksoftware|sigsynopsys" | grep -aEv "$CONTAINERS_WITHOUT_CURL" | cut -d' ' -f1)"
+        local container_ids="$(docker container ls | grep -aE "blackducksoftware" | grep -aEv "$CONTAINERS_WITHOUT_CURL" | cut -d' ' -f1)"
         # shellcheck disable=SC2155 # We don't care about the subcommand exit code
         local container_report=$(
             for cur_id in ${container_ids}; do
@@ -3743,7 +3838,7 @@ check_reg_server_reachable() {
 }
 
 ################################################################
-# Test connectivity with the Synopsys artifactory
+# Test connectivity with the Black Duck artifactory
 #
 # Globals: (set indirectly)
 #   SIG_REPO_RESOLVE_RESULT, SIG_REPO_RESOLVE_OUTPUT,
@@ -3762,7 +3857,7 @@ check_sig_repo_reachable() {
             return 0
         fi
 
-        local -r SIG_REPO_HOST="sig-repo.synopsys.com"
+        local -r SIG_REPO_HOST="repo.blackduck.com"
         local -r SIG_REPO_URL="https://${SIG_REPO_HOST}/"
         tracepath_host "${SIG_REPO_HOST}" "SIG_REPO"
         probe_url "${SIG_REPO_URL}" "SIG_REPO" "${SIG_REPO_URL}"
@@ -4543,6 +4638,18 @@ IPVS timeout check ${IPVS_TIMEOUT_STATUS}
 
 ${TCP_KEEPALIVE_TIMEOUT_DESC}
 
+$(generate_report_section "Redis Initial Configuration")
+
+Memory overcommit: ${SYSCTL_OVERCOMMIT_STATUS}
+
+Kernel transparent hugepages: ${KERNEL_TRANSPARENT_HUGEPAGES}
+
+See https://redis.io/learn/operate/redis-at-scale/talking-to-redis/initial-tuning and
+https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/ for
+other tuning suggestions.
+
+Make sure to configure settings on all nodes! This script only checks the master.
+
 $(generate_report_section "Login manager settings")
 
 Login manager settings: ${LOGINCTL_STATUS}
@@ -4679,7 +4786,7 @@ ${REG_TRACEPATH_RESULT}
 Web access to Black Duck registration service via docker containers:
 ${REG_CONTAINER_WEB_REPORT}
 
-$(generate_report_section "Synopsys artifactory connectivity")
+$(generate_report_section "Black Duck artifactory connectivity")
 
 ${SIG_REPO_URL_REACHABLE}
 
@@ -4689,7 +4796,7 @@ ${SIG_REPO_RESOLVE_OUTPUT}
 Path information: ${SIG_REPO_TRACEPATH_CMD}
 ${SIG_REPO_TRACEPATH_RESULT}
 
-Web access to Synopsys artifactory via docker containers:
+Web access to Black Duck artifactory via docker containers:
 ${SIG_REPO_CONTAINER_WEB_REPORT}
 
 $(generate_report_section "Black Duck Docker registry connectivity")
@@ -4869,7 +4976,7 @@ systemCheck.dockerOrchestrator=${DOCKER_ORCHESTRATOR}
 systemCheck.dockerVersion=${DOCKER_VERSION}
 systemCheck.nodeCount=${DOCKER_NODE_COUNT}
 systemCheck.container.authentication.status=$(get_container_status "blackducksoftware/blackduck-authentication:*")
-systemCheck.container.binaryscanner.status=$(get_container_status "sigsynopsys/bdba-worker:*")
+systemCheck.container.binaryscanner.status=$(get_container_status "blackducksoftware/bdba-worker:*")
 systemCheck.container.bomengine.status=$(get_container_status "blackducksoftware/blackduck-bomengine:*")
 systemCheck.container.cfssl.status=$(get_container_status "blackducksoftware/blackduck-cfssl:*")
 systemCheck.container.documentation.status=$(get_container_status "blackducksoftware/blackduck-documentation:*")
@@ -4899,12 +5006,13 @@ Usage:
     $(basename "$0") <arguments>
 
 Supported Arguments:
-    --sizing gen01    Estimate installation size assuming that enhanced 
+    --sizing gen01    Estimate installation size assuming that enhanced
                       scanning is disabled.
-    --sizing gen02    Estimate installation size assuming that enhanced 
+    --sizing gen02    Estimate installation size assuming that enhanced
                       scanning is enabled.
     --sizing gen03    Estimate installation size in terms of scans per hour (pre-2023.10.1).
-    --sizing gen04    Estimate installation size in terms of scans per hour.
+    --sizing gen04    Estimate installation size in terms of scans per hour (2023.10.1 to 2024.10.0).
+    --sizing gen05    Estimate installation size in terms of scans per hour.
     --no-network      Do not use network tests, assume host has no connectivity
                       This can be useful as network tests can take a long time
                       on a system with no connectivity.
@@ -4932,6 +5040,7 @@ process_args() {
                     gen02) ;;
                     gen03) ;;
                     gen04) ;;
+                    gen05) ;;
                     *)
                         echo "$(basename "$0"): unknown scan sizing value '$SCAN_SIZING'"
                         echo
@@ -4997,6 +5106,7 @@ main() {
 
     check_hyperthreading
     check_iosched
+    check_redis_settings
 
     check_entropy
     get_interface_info
